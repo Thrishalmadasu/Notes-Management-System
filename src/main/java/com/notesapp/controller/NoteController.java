@@ -33,6 +33,13 @@ public class NoteController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse> updateNote(@PathVariable Long id, @Valid @RequestBody NoteRequest noteRequest) {
+        NoteResponse noteResponse = noteService.updateNote(id, noteRequest);
+        ApiResponse response = new ApiResponse(true, "Note updated successfully", noteResponse);
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse> deleteNote(@PathVariable Long id) {
         noteService.deleteNote(id);

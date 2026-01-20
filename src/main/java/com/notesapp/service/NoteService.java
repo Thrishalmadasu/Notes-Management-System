@@ -55,6 +55,22 @@ public class NoteService {
     }
 
     @Transactional
+    public NoteResponse updateNote(Long id, NoteRequest noteRequest) {
+        log.info("Updating note with id: {}", id);
+        
+        Note note = noteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Note not found with id: " + id));
+        
+        note.setTitle(noteRequest.getTitle());
+        note.setContent(noteRequest.getContent());
+        
+        Note updatedNote = noteRepository.save(note);
+        log.info("Note updated successfully with id: {}", updatedNote.getId());
+        
+        return mapToResponse(updatedNote);
+    }
+
+    @Transactional
     public void deleteNote(Long id) {
         log.info("Deleting note with id: {}", id);
         
