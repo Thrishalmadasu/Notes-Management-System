@@ -10,7 +10,7 @@ A production-grade Spring Boot REST API with complete CI/CD pipeline demonstrati
 **Architecture**: 4-Layer (Controller → Service → Repository → Entity)  
 **Database**: H2 (In-Memory)  
 **CI/CD**: GitHub Actions  
-**Deployment**: Kubernetes (Kind)
+**Deployment**: Kubernetes
 
 ---
 
@@ -299,4 +299,3 @@ Content-Type: application/json
 ---
 
 **Built with Spring Boot, Docker, and Kubernetes**
-# CI/CD Pipeline Test
