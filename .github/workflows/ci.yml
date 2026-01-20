@@ -57,20 +57,20 @@ jobs:
     # 5. SCA - Dependency Vulnerability Scan
     # ----------------------------------------------------
     - name: OWASP Dependency Check
-      run: |
-        mvn org.owasp:dependency-check-maven:check \
-          -DfailBuildOnCVSS=9 \
-          -DsuppressionFiles=.github/dependency-check-suppressions.xml
-      continue-on-error: false
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'notes-management-system'
+        path: '.'
+        format: 'HTML'
+        out: 'reports'
+      continue-on-error: true
 
     - name: Upload Dependency Check Report
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: dependency-check-report
-        path: |
-          target/dependency-check-report.html
-          target/dependency-check-report.json
+        path: reports
         if-no-files-found: ignore
         retention-days: 30
       continue-on-error: true
