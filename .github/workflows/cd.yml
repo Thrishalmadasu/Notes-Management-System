@@ -1,8 +1,8 @@
-name: CD Pipeline
+name: CD Execution
 
 on:
   workflow_run:
-    workflows: ["CI Pipeline"]
+    workflows: ["CI Execution"]
     types:
       - completed
     branches: [ main, master ]
@@ -10,30 +10,34 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Kubernetes
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
     steps:
-    # 1. Checkout Code
-    - name: 📥 Checkout Code
+    # ----------------------------------------------------
+    # 1. Checkout
+    # ----------------------------------------------------
+    - name: Checkout source code
       uses: actions/checkout@v4
     
-    # 2. Setup Kubernetes (Kind)
-    - name: ☸️ Create Kubernetes Cluster
+    # ----------------------------------------------------
+    # 2. Setup Kubernetes
+    # ----------------------------------------------------
+    - name: Create Kubernetes Cluster
       uses: helm/kind-action@v1.8.0
       with:
         cluster_name: notes-cluster
         wait: 60s
     
-    # 3. Verify Cluster
-    - name: 🔍 Verify Kubernetes Cluster
+    - name: Verify Kubernetes Cluster
       run: |
         kubectl cluster-info
         kubectl get nodes
     
-    # 4. Create Kubernetes Deployment
-    - name: 🚀 Deploy Application to Kubernetes
+    # ----------------------------------------------------
+    # 3. Deploy Application
+    # ----------------------------------------------------
+    - name: Deploy to Kubernetes
       run: |
         cat <<EOF | kubectl apply -f -
         apiVersion: apps/v1
@@ -98,34 +102,32 @@ jobs:
             name: http
         EOF
     
-    # 5. Wait for Deployment
-    - name: ⏳ Wait for Deployment to be Ready
+    # ----------------------------------------------------
+    # 4. Wait for Deployment
+    # ----------------------------------------------------
+    - name: Wait for deployment rollout
       run: |
-        echo "Waiting for deployment to be ready..."
         kubectl rollout status deployment/notes-api --timeout=300s
-        
-        echo "Deployment status:"
         kubectl get deployments
-        
-        echo "Pod status:"
         kubectl get pods
-        
-        echo "Service status:"
         kubectl get services
     
-    # 6. Port Forward for Testing
-    - name: 🔌 Setup Port Forward
+    # ----------------------------------------------------
+    # 5. Port Forwarding
+    # ----------------------------------------------------
+    - name: Setup port forward for testing
       run: |
         kubectl port-forward service/notes-api-service 8080:8080 &
         sleep 10
     
-    # 7. Health Check Validation
-    - name: 🏥 Health Check Validation
+    # ----------------------------------------------------
+    # 6. Health Check
+    # ----------------------------------------------------
+    - name: Validate health endpoint
       run: |
-        echo "Testing health endpoint..."
         for i in {1..10}; do
           if curl -f http://localhost:8080/health; then
-            echo "✅ Health check passed!"
+            echo "Health check passed"
             break
           else
             echo "Attempt $i failed, retrying..."
@@ -133,57 +135,25 @@ jobs:
           fi
         done
     
-    # 8. DAST - Dynamic Application Security Testing
-    - name: 🔒 DAST - Basic Security Tests
+    # ----------------------------------------------------
+    # 7. DAST - Dynamic Application Security Testing
+    # ----------------------------------------------------
+    - name: Run DAST security tests
       run: |
-        echo "Running basic DAST tests..."
-        
-        # Test 1: Health endpoint accessibility
-        echo "Test 1: Health endpoint"
         curl -f http://localhost:8080/health
-        
-        # Test 2: Create note functionality
-        echo "Test 2: Create note"
         curl -f -X POST http://localhost:8080/notes \
           -H "Content-Type: application/json" \
           -d '{"title":"DAST Test","content":"Testing security"}'
-        
-        # Test 3: Get notes functionality
-        echo "Test 3: Get all notes"
         curl -f http://localhost:8080/notes
-        
-        # Test 4: Invalid input validation
-        echo "Test 4: Validation test"
         curl -X POST http://localhost:8080/notes \
           -H "Content-Type: application/json" \
           -d '{"title":"","content":""}' | grep "Validation failed"
-        
-        echo "✅ All DAST tests passed!"
     
-    # 9. Deployment Verification
-    - name: ✅ Verify Deployment
+    # ----------------------------------------------------
+    # 8. Deployment Verification
+    # ----------------------------------------------------
+    - name: Verify deployment status
       run: |
-        echo "## CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Kubernetes Cluster: Created" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Deployment: Successful (2 replicas)" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Service: Exposed" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Health Check: Passing" >> $GITHUB_STEP_SUMMARY
-        echo "✅ DAST Tests: Passed" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
-        kubectl get all >> $GITHUB_STEP_SUMMARY
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Pod Logs (Last 20 lines)" >> $GITHUB_STEP_SUMMARY
+        kubectl get all
         POD_NAME=$(kubectl get pods -l app=notes-api -o jsonpath='{.items[0].metadata.name}')
-        kubectl logs $POD_NAME --tail=20 >> $GITHUB_STEP_SUMMARY || true
-    
-    # 10. Cleanup
-    - name: 🧹 Cleanup
-      if: always()
-      run: |
-        echo "Deployment completed successfully!"
-        echo "In production, the cluster would remain running."
-        echo "For this demo, Kind cluster will be cleaned up automatically."
+        kubectl logs $POD_NAME --tail=20
