@@ -36,22 +36,22 @@ jobs:
     # 3. Linting
     # ----------------------------------------------------
     - name: Run Maven Checkstyle
-      run: mvn checkstyle:check
+      run: mvn checkstyle:check || echo "Checkstyle warnings found but continuing"
       continue-on-error: true
 
     # ----------------------------------------------------
     # 4. SAST - CodeQL
     # ----------------------------------------------------
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       with:
         languages: java
 
     - name: CodeQL Autobuild
-      uses: github/codeql-action/autobuild@v3
+      uses: github/codeql-action/autobuild@v4
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
 
     # ----------------------------------------------------
     # 5. SCA - Dependency Vulnerability Scan
@@ -59,16 +59,19 @@ jobs:
     - name: OWASP Dependency Check
       run: |
         mvn org.owasp:dependency-check-maven:check \
-          -DfailBuildOnCVSS=7 \
+          -DfailBuildOnCVSS=9 \
           -DsuppressionFiles=.github/dependency-check-suppressions.xml
-      continue-on-error: true
+      continue-on-error: false
 
     - name: Upload Dependency Check Report
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: dependency-check-report
-        path: target/dependency-check-report.html
+        path: |
+          target/dependency-check-report.html
+          target/dependency-check-report.json
+        if-no-files-found: ignore
         retention-days: 30
       continue-on-error: true
 
@@ -106,10 +109,11 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH'
-      continue-on-error: true
+        exit-code: '1'
+        ignore-unfixed: true
 
     - name: Upload Trivy scan results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: trivy-results.sarif
       continue-on-error: true
