@@ -104,6 +104,8 @@ jobs:
     # ----------------------------------------------------
     - name: Run Trivy vulnerability scan
       uses: aquasecurity/trivy-action@0.24.0
+      env:
+        TRIVY_DEBUG: true
       with:
         image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/notes-management-system:latest
         format: 'sarif'
@@ -111,9 +113,9 @@ jobs:
         severity: 'CRITICAL,HIGH'
         exit-code: '1'
         ignore-unfixed: true
-      continue-on-error: false
 
     - name: Upload Trivy scan results to GitHub Security
+      if: always()
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: trivy-results.sarif
